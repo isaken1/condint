@@ -50,17 +50,34 @@ class DB_Manager:
 			print(err)
 			exit(1)
 
+
+
 	def create_table(self):
 		self.table = {}
 
-		self.table['usuario'] = (
-			"CREATE TABLE 'usuario' ("
-			" 'tag_id' VARCHAR(8) NOT NULL,"
-			" 'nome_morador' VARCHAR NOT NULL,"
-			" 'numero_casa' INT NOT NULL,"
-			" 'xbee_destino' VARCHAR(16) NOT NULL"
-			" 'data_cadastro' DATETIME NOT NULL "
-			" PRIMARY KEY ('tag_id')")
+		self.table['casa'] = (
+			"CREATE TABLE Casa("
+			"numCasa INTEGER UNSIGNED NOT NULL,"
+			"qtdMoradores INTEGER UNSIGNED NOT NULL,"
+			"PRIMARY KEY (numCasa)"
+			")TYPE=InnoDB;")
+
+		self.table['morador'] = (
+			"CREATE TABLE Morador("
+			"idMorador INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,"
+			"Casa_numCasa INTEGER UNSIGNED NOT NULL,"
+			"tagMorador VARCHAR(8) NOT NULL,"
+			"nomeMorador VARCHAR NOT NULL,"
+			"emCasa BOOL NULL"
+			"dataCadastro DATETIME NOT NULL"
+			"ultimaSaida DATETIME NOT NULL"
+			"ultimaEntrada DATETIME NOT NULL,"
+			"PRIMARY KEY (idMorador, Casa_numCasa),"
+			"FOREIGN KEY (Casa_numCasa)"
+			"	REFERENCES Casa(numCasa)"
+			"		ON UPDATE NO ACTION"
+			"		ON DELETE NO ACTION"
+			")TYPE=InnoDB;")
 
 		for name, ddl in dictionary.iteritems():
 			try:
