@@ -1,28 +1,34 @@
 import mysql.connector
 from mysql.connector import errorcode
+import serial
+from datetime import datetime
+import sys
 
 
 class DB_Manager:
 
-	def __init__(self):
+	def __init__(self, tableName):
 		self.dbase = "condominio"
 		self.username = "root"
 		self.passwrd = "jkgs1234"
+		self.table_name = tableName
+
+		self.connection = mysql.connector.connect(user=self.username, password=self.passwrd, host='127.0.0.1')
+		self.cursor = self.connection.cursor()
 
 		self.connect_db()
-		self.create_database()
+		self.create_table()
 
 	def connect_db(self):
 		try:
-			self.connection = mysql.connector.connect(user=self.username, password=self.passwrd, host='127.0.0.1', database=self.dbase)
-			self.cursor = self.connection.cursor()
+			self.connection.database = self.dbase
 		except mysql.connector.Error as err:
 			if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
 				print ('Something is wrong with yout username and password.')
 				return False
 			elif err.errno == errorcode.ER_BAD_DB_ERROR:
 				print ('Database does not exist, attempting to create it...')
-				self.create_database(self.cursor)
+				self.create_database()
 				return True
 			else:
 				print (err)
@@ -40,56 +46,25 @@ class DB_Manager:
 			print ('Failed creating database: {}'.format(err))
 			exit(1)
 
-		try:
-			self.connection.database=self.dbase
-		except mysql.connector.Error as err:
-			if err.errno == errorcode.ER_BAD_DB_ERROR:
-				self.create_database()
-				self.connection.database(self.dbase)
-		else:
-			print(err)
-			exit(1)
-
-
 
 	def create_table(self):
-		self.table = {}
-
-		self.table['casa'] = (
-			"CREATE TABLE Casa("
-			"numCasa INTEGER UNSIGNED NOT NULL,"
-			"qtdMoradores INTEGER UNSIGNED NOT NULL,"
-			"PRIMARY KEY (numCasa)"
-			")TYPE=InnoDB;")
-
-		self.table['morador'] = (
-			"CREATE TABLE Morador("
-			"idMorador INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,"
-			"Casa_numCasa INTEGER UNSIGNED NOT NULL,"
-			"tagMorador VARCHAR(8) NOT NULL,"
-			"nomeMorador VARCHAR NOT NULL,"
-			"emCasa BOOL NULL"
-			"dataCadastro DATETIME NOT NULL"
-			"ultimaSaida DATETIME NOT NULL"
-			"ultimaEntrada DATETIME NOT NULL,"
-			"PRIMARY KEY (idMorador, Casa_numCasa),"
-			"FOREIGN KEY (Casa_numCasa)"
-			"	REFERENCES Casa(numCasa)"
-			"		ON UPDATE NO ACTION"
-			"		ON DELETE NO ACTION"
-			")TYPE=InnoDB;")
-
-		for name, ddl in dictionary.iteritems():
-			try:
-				print ('Creating table {}: '.format(name))
-				self.cursor.execute(ddl)
-			except mysql.connector.Error as err:
-				if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-	 				print ('Table already exists')
-				else:
-					print (err.msg)
-			else:
-				print ('OK')
+		table = ("CREATE TABLE IF NOT EXISTS " + self.table_name + " ("
+				"idMorador INTEGER UNSIGNED NOT NULL AUTO_INCREMENT, "
+				#"Casa_numCasa INTEGER UNSIGNED NOT NULL,"
+				"tagMorador VARCHAR(8) NOT NULL, "
+				"nomeMorador VARCHAR NOT NULL, "
+				"emCasa BIT NULL, "
+				"dataCadastro DATETIME NOT NULL, "
+				"ultimaSaida DATETIME NULL, "
+				"ultimaEntrada DATETIME NULL, "
+				"PRIMARY KEY (idMorador)"
+				# "FOREIGN KEY (Casa_numCasa)"
+				# "	REFERENCES Casa(numCasa)"
+				# "		ON UPDATE NO ACTION"
+				# "		ON DELETE NO ACTION"
+				")ENGINE=InnoDB;")
+		self.RunCommand(table);
+		
 
 
 	def connected(self):
@@ -97,3 +72,80 @@ class DB_Manager:
 			print 'Connected'
 		else:
 			print 'Not connected'
+
+	def get_rfid(self, port):
+		################################################################################
+		# MIT License - Share/modify/etc, but please keep this notice.
+		#
+		# Copyright (c) 2010 Matt Williamson, App Delegate Inc
+		#
+		# Permission is hereby granted, free of charge, to any person obtaining a copy
+		# of this software and associated documentation files (the "Software"), to deal
+		# in the Software without restriction, including without limitation the rights
+		# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+		# copies of the Software, and to permit persons to whom the Software is
+		# furnished to do so, subject to the following conditions:
+		#
+		# The above copyright notice and this permission notice shall be included in
+		# all copies or substantial portions of the Software.
+		#
+		# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+		# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+		# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+		# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+		# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+		# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+		# THE SOFTWARE.
+		################################################################################
+		print 'Starting connection'
+		try:
+			com = serial.Serial(port, 9600)
+			print 'Connected to Arduino module. Awaiting RFiD scans.'
+			chars = []
+			while True:
+				char = com.read()
+
+				#Read characters until hit line endings
+				if char != '\r' and char != '\n' and len(chars) <= 10:
+					chars.append(char)
+
+					#If we have 10 characters, then we have an RFID tag
+					if len(chars) >= 10:
+						tag_id = ''.join(chars[:10])
+						print 'Tag: ', tag_id
+						return tag_id
+				else:
+					#Reset buffer
+					chars = []
+					return 0
+		except serial.SerialException:
+			print '*ERROR'
+			print 'Could not open serial port'
+			sys.exit('Edit database.py and make sure you define serial_port properly')
+			return 0
+
+	def RunCommand(self, cmd):
+		print ("RUNNING COMMAND: " + cmd)
+		try:
+			self.cursor.execute(cmd)
+		except mysql.connector.Error as err:
+			print ("\nError Message: " + str(err.msg))
+			print ("WITH " + cmd)
+		try:
+			msg = self.cursor.fetchall()
+		except:
+			msg = self.cursor.fetchone()
+		return msg
+
+	def Add_Entry(self, name, tag):
+		entry_time = datetime.now.strftime("%y-%m-%d %H:%M:%S")
+
+		command = "INSERT INTO " + self.table + " (nomeMorador, tagMorador, dataCadastro)"
+		command += " VALUES ('%s', '%s', '%s');" % (name, tag, entry_time)
+
+		self.RunCommand(command);
+
+	def __del__(self):
+	 	self.connection.commit()
+	 	self.cursor.close()
+		self.connection.close()
