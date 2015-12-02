@@ -30,7 +30,6 @@ class Com_port_list(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Com_port_list, self).__init__(parent)
         self.setupUi(self)
-        self.port = ""
         self.create_table()
 
     def setupUi(self, Com_port_list):
@@ -53,14 +52,18 @@ class Com_port_list(QtGui.QDialog):
         self.btn_atualizar.setObjectName(_fromUtf8("btn_atualizar"))
         self.verticalLayout.addWidget(self.btn_atualizar)
         self.btn_cancelar = QtGui.QPushButton(Com_port_list)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed,
+             QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.btn_cancelar.sizePolicy().
+             hasHeightForWidth())
         self.btn_cancelar.setSizePolicy(sizePolicy)
         self.btn_cancelar.setObjectName(_fromUtf8("btn_cancelar"))
-        self.verticalLayout.addWidget(self.btn_cancelar)
 
         self.retranslateUi(Com_port_list)
         self.btn_cancelar.clicked.connect(self.reject)
         self.btn_atualizar.clicked.connect(self.update_table_data)
-        self.tbl_ports.doubleClicked.connect(self.doubleClicked_table)
         QtCore.QMetaObject.connectSlotsByName(Com_port_list)
 
     def retranslateUi(self, Com_port_list):
@@ -73,12 +76,12 @@ class Com_port_list(QtGui.QDialog):
 
     def create_table(self):
         #Inicializar header
-        self.header = ["Porta", "Dispositivo", "Informacoes"]
+        header = ["Porta", "Dispositivo", "Informacoes"]
 
         #Inicializar modelo
         self.model = QtGui.QStandardItemModel()
         self.model.setColumnCount(3)
-        self.model.setHorizontalHeaderLabels(self.header)
+        self.model.setHorizontalHeaderLabels(header)
         self.tbl_ports.setModel(self.model)
         self.tbl_ports.setShowGrid(True)
 
@@ -89,43 +92,41 @@ class Com_port_list(QtGui.QDialog):
         #Inicializar dados
         self.update_table_data()
 
-        ##Inicializar as propriedades do header horizontal
-        #horizontal_header = self.tbl_xbee.horizontalHeader()
-        #horizontal_header.setStretchLastSection(True)
+        """#Inicializar as propriedades do header horizontal
+        horizontal_header = self.tbl_xbee.horizontalHeader()
+        horizontal_header.setStretchLastSection(True)
 
-        ##Largura da coluna ocupar o conteudo
-        #self.tbl_xbee.resizeColumnsToContents()
+        #Largura da coluna ocupar o conteudo
+        self.tbl_xbee.resizeColumnsToContents()
 
-        ##Setar altura das linhas
-        #row_number = len(data)
-        #for row in xrange(row_number):
-            #self.tbl_xbee.setRowHeight(row, 18)
+        #Setar altura das linhas
+        row_number = len(data)
+        for row in xrange(row_number):
+            self.tbl_xbee.setRowHeight(row, 18)
 
-        ##Habilitar ordenamento
-        #self.tbl_xbee.setSortingEnabled(True)
+        #Habilitar ordenamento
+        self.tbl_xbee.setSortingEnabled(True)"""
 
     def update_table_data(self):
         import serial.tools.list_ports
 
         self.tbl_ports.clearSpans()
-        self.model.clear()
 
         tbl_data = list(serial.tools.list_ports.comports())
-        column = 0
+        row = []
         for data in tbl_data:
-            row = 0
-            for d in data:
-                item = QtGui.QStandardItem(d)
-                item.setEditable(False)
-                self.model.setItem(column, row, item)
-                row = row + 1
-            column = column + 1
-        self.model.setHorizontalHeaderLabels(self.header)
+            item = QtGui.QStandardItem(data[0])
+            item.setEditable(False)
+            row.append(item)
+        self.model.appendRow(row)
 
     def doubleClicked_table(self):
         index = self.tbl_ports.selectedIndexes()[0]
-        self.port = self.tbl_ports.model().data(index).toString()
-        QtGui.QDialog.accept(self)
+        port = self.tbl_ports.model().data(index).toString()
+        self.port = port
 
-    def return_port(self):
-        return self.port
+    @staticmethod
+    def return_port(self, parent=None):
+        dialog = Com_port_list(parent)
+        result = dialog.exec_()
+        return (self.port, result == QtGui.QDialog.Accepted)

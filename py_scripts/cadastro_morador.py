@@ -184,10 +184,7 @@ class Cadastro_Morador(QtGui.QDialog):
         self.edt_tag.setText(self.used_tag)
 
     def get_port(self):
-        dialog = Com_port_list(self)
-        if dialog.exec_() == QtGui.QDialog.Accepted:
-            port = dialog.return_port()
-            self.lbl_porta.setText(str(port))
+        self.lbl_porta.setText(Com_port_list.return_port(self))
 
     def add_user(self):
         self.dbm.Add_Entry_Morador(self.used_tag, self.edt_nome.text())
