@@ -10,6 +10,7 @@ import sys
 
 class DB_Manager:
 
+    #Construtor do objeto da classe DB_Manager
     def __init__(self, tableName):
         self.dbase = "condominio"
         self.username = "root"
@@ -23,7 +24,8 @@ class DB_Manager:
         self.connect_db()
         self.create_table_morador()
         self.create_table_usuario()
-
+    
+    #Função de conexão com o BD
     def connect_db(self):
         try:
             self.connection.database = self.dbase
@@ -42,7 +44,7 @@ class DB_Manager:
         else:
             print ('Connected')
             return True
-
+    #Função de criação do DB
     def create_database(self):
         try:
             self.cursor.execute(
@@ -51,7 +53,8 @@ class DB_Manager:
         except mysql.connector.Error as err:
             print ('Failed creating database: {}'.format(err))
             exit(1)
-
+    
+    #Função de criação da tabela morador
     def create_table_morador(self):
         table_morador = ("CREATE TABLE IF NOT EXISTS Morador ("
                 "idMorador INTEGER UNSIGNED NOT NULL AUTO_INCREMENT, "
@@ -69,7 +72,8 @@ class DB_Manager:
                 # "        ON DELETE NO ACTION"
                 ")ENGINE=InnoDB;")
         self.RunCommand(table_morador)
-
+    
+    #Função de criação da tabela usuário
     def create_table_usuario(self):
         table_usuario = ("CREATE TABLE IF NOT EXISTS Usuario ("
                  "idUsuario INT NOT NULL AUTO_INCREMENT, "
@@ -79,13 +83,14 @@ class DB_Manager:
                  "CONSTRAINT Login_pk PRIMARY KEY (idUsuario)"
                  ")ENGINE=InnoDB;")
         self.RunCommand(table_usuario)
-
+    #Função de verificação de conexão
     def connected(self):
         if (self.connection.is_connected()):
             print 'Connected'
         else:
             print 'Not connected'
 
+    #Função (de autoria do MIT) de conexão com o módulo RFID
     def get_rfid(self, port):
         #lint:disable
         ################################################################################
@@ -140,6 +145,7 @@ class DB_Manager:
                 ' define serial_port properly')
             return 0
 
+    #Função de execução de scripts SQL no BD
     def RunCommand(self, cmd):
         print ("RUNNING COMMAND: " + cmd)
         try:
@@ -152,7 +158,8 @@ class DB_Manager:
         except:
             msg = self.cursor.fetchone()
         return msg
-
+    
+    #Função de adição de registros na tabela morador
     def Add_Entry_Morador(self, name, tag):
         entry_time = datetime.now.strftime("%y-%m-%d %H:%M:%S")
 
@@ -161,12 +168,13 @@ class DB_Manager:
         command += " VALUES ('%s', '%s', '%s');" % (name, tag, entry_time)
 
         self.RunCommand(command)
-
+    
+    #Função de adição de registros na tabela Usuário
     def Add_Entry_Usuario(self, login, nome, senha):
         command = "INSERT INTO Morador (login, nome, senha)"
         command += " VALUES ('%s', '%s', '%s');" % (login, nome, senha)
         self.RunCommand(command)
-
+        
     def __del__(self):
         self.connection.commit()
         self.cursor.close()
